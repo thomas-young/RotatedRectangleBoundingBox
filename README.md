@@ -23,6 +23,6 @@
 - Move the base line of a rectangle by clicking and dragging either of the red dots
 - Resize a rectangle by clicking on one of the base line's red dots to select the rectangle, then click anywhere along the yellow line to resize it
 
-# Recovering Labels
+### Recovering Labels
 - Did something go wrong? I hope not. But if it did, you can restore the contents of the 'labels' folder with any of the timestamped subdirectories in the 'backup' folder.
 - Copy and paste the .csv files in from the timestamped directory of your choice into the top level 'labels' folder. 
