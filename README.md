@@ -1,4 +1,4 @@
-# Rotated Rectanlge Bounding Box Annotation Tool
+# Rotated Rectangle Bounding Box Annotation Tool
 
 ## How to Use
 
