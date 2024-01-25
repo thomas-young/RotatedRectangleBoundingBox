@@ -11,17 +11,25 @@ import csv
 from pathlib import Path 
 from datetime import datetime
 import shutil
-
-Path("./labels/").mkdir(parents=True, exist_ok=True)
+from tkinter import Tk
+from tkinter.filedialog import askdirectory
+TK_SILENCE_DEPRECATION=1
+root = Tk()
+root.withdraw()
+imagePath = askdirectory(title='Select Folder') # shows dialog box and return the path
+print(imagePath)  
+labelPath = str(imagePath) + "Labels/"
+Path(labelPath).mkdir(parents=True, exist_ok=True)
 now = datetime.now()
 date_time = now.strftime("%m_%d_%y_%H_%M_%S")
-backupFolder = "./backup/" + date_time + "/"
-Path("./backup/").mkdir(parents=True, exist_ok=True)
+backupFolder = str(imagePath) + "Backup/"
+backupSubFolder = str(imagePath) + "Backup/" + date_time + "/"
+Path(backupFolder).mkdir(parents=True, exist_ok=True)
 #currentLabels = os.listdir("./labels/")
-shutil.copytree("./labels/", backupFolder)
+shutil.copytree(labelPath, backupSubFolder)
 
-files = os.listdir('./images')
-files = [f for f in files if os.path.isfile('./images'+'/'+f)] #Filtering only the files.
+files = os.listdir(imagePath)
+files = [f for f in files if os.path.isfile(imagePath+'/'+f)] #Filtering only the files.
 print(*files, sep="\n")
 
 class Rectangle():
@@ -419,7 +427,7 @@ class LineBuilder():
 
     def saveRectangles(self):
         filename, file_extension = os.path.splitext(self.imageName)
-        csvName = "labels/" + filename + ".csv"
+        csvName = labelPath + filename + ".csv"
 
         print(csvName)
         with open(csvName, 'w', newline='') as csvFile:
@@ -430,7 +438,7 @@ class LineBuilder():
 
     def loadRectangles(self):
         filename, file_extension = os.path.splitext(self.imageName)
-        csvName = "labels/" + filename + ".csv"
+        csvName = labelPath + filename + ".csv"
         print(csvName)
         try:
             with open(csvName, 'r', newline='') as csvFile:
@@ -532,7 +540,7 @@ for file in files:
     lineBuilders.append(LineBuilder(file))
 
 current_image_index = 0
-img = np.asarray(Image.open('./images/' + files[current_image_index]))
+img = np.asarray(Image.open(imagePath + '/' + files[current_image_index]))
 numImages = len(files)
 imgplot = plt.imshow(img)
 linebuilder = lineBuilders[0]
@@ -548,7 +556,7 @@ def onKeyPress(event):
         if current_image_index < 0:
             current_image_index = len(files) -1
         #print(f"Displaying image {files[current_image_index]}: {current_image_index + 1} of {len(files)}")
-        img = np.asarray(Image.open('./images/' + files[current_image_index]))
+        img = np.asarray(Image.open(imagePath + '/' + files[current_image_index]))
         fig.canvas.manager.set_window_title(files[current_image_index])
         plt.xlabel(files[current_image_index], fontsize=18)
         plt.title("Image " + str(current_image_index  + 1) + " of " + str(numImages))
@@ -566,7 +574,7 @@ def onKeyPress(event):
         if current_image_index >= len(files):
             current_image_index = 0
         #print(f"Displaying image {files[current_image_index]}: {current_image_index + 1} of {len(files)}")
-        img = np.asarray(Image.open('./images/' + files[current_image_index]))
+        img = np.asarray(Image.open(imagePath + '/' +  files[current_image_index]))
         fig.canvas.manager.set_window_title(files[current_image_index])
         plt.xlabel(files[current_image_index], fontsize=18)
         plt.title("Image " + str(current_image_index  + 1) + " of " + str(numImages))
