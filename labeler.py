@@ -87,55 +87,48 @@ class Rectangle():
         for line in self.lines:
             line.remove()
 
+    def calculatePerpendicularSlope(self, deltaX, deltaY):
+        if deltaX == 0:  # original line is vertical
+            # The perpendicular line is horizontal, so its slope is 0
+            return 0
+        elif deltaY == 0:  # original line is horizontal
+            # The perpendicular line is vertical, so its slope is infinite
+            return math.inf
+        else:
+            # General case
+            originalSlope = deltaY / deltaX
+            return -1 / originalSlope
+
     def recalculateLines(self, baseLine, pointId):
         #print("ATTEMPTING TO ROTATE ABOUT POINT: ", pointId)
         xs = list(baseLine.get_xdata())
         ys = list(baseLine.get_ydata())
         deltaX = xs[1] - xs[0]
         deltaY = ys[1] - ys[0]
-        baseLineSlope = None
-        if deltaX != 0:
-            baseLineSlope = deltaY/deltaX
-        else:
-            #print("DELTA X = 0")
-            if self.currSlope >= 0:
-                baseLineSlope = 999999999
-            else:
-                baseLineSlope = -999999999
-
-        if baseLineSlope != 0:
-            perpSlope = -1/baseLineSlope
-        else:
-            #print("DELTA Y = 0")
-
-            perpSlope = 999999999
 
 
-        #print("old slope: ", self.currSlope)
-        #print('new slope: ', baseLineSlope)
-        rotationAngle = -1 * (math.atan(self.currSlope) - math.atan(baseLineSlope))
-        #print("rotationAngle: ",rotationAngle)
+        baseLineSlope = np.arctan2(deltaY, deltaX)
+        self.currSlope = np.arctan2(self.currBaseLineYs[1] - self.currBaseLineYs[0], self.currBaseLineXs[1] - self.currBaseLineXs[0])
+
+        rotationAngle = baseLineSlope -  self.currSlope
+
+        perpSlope = self.calculatePerpendicularSlope(deltaX, deltaY)
+
+
         if pointId == 1:
-
-            # 
             px = self.lines[1].get_xdata()[1]
             py = self.lines[1].get_ydata()[1]
 
             # bottom right point before rotation
             tx = self.currBaseLineXs[1]
             ty = self.currBaseLineYs[1]
-            #print("tx: ", tx)
-            #print("xs: ", xs)
-            #print("ty: ", ty)
-            #print("ys: ", ys)
 
             fx=math.cos(rotationAngle)*(tx-xs[0])-math.sin(rotationAngle)*(ty-ys[0])   + xs[0]
             fy=math.sin(rotationAngle)*(tx-xs[0])+math.cos(rotationAngle)*(ty-ys[0])  + ys[0]
 
             transX = xs[1] - fx
             transY = ys[1] - fy
-            #print("transX: ", transX)
-            #print("transY: ", transY)
+  
             px += abs(transX)
             py += abs(transY)
          
@@ -147,13 +140,22 @@ class Rectangle():
 
             qx2 = math.cos(rotationAngle)*(px2-xs[0])-math.sin(rotationAngle)*(py2-ys[0])+xs[0] 
             qy2 = math.sin(rotationAngle)*(px2-xs[0])+math.cos(rotationAngle)*(py2-ys[0])+ys[0]
-
-            #print("old perp line data: ", px, py)
-            #print("new perp line data: ", qx, qy)
-            topLineIntercept = qy2 - (baseLineSlope * qx2)
+        
             perpIntercept = ys[1] - (perpSlope * xs[1])
-            x2 = (perpIntercept - topLineIntercept) / (baseLineSlope - perpSlope)
-            y2 = (x2 * baseLineSlope) + topLineIntercept
+            # Calculate intersection of perpline and topline
+            parallelLineSlope = math.tan(baseLineSlope)
+
+            parallelLineIntercept = qy2 - (parallelLineSlope * qx2)
+
+            # Calculate the intersection of the perpendicular line and the parallel line
+            if perpSlope != math.inf:
+                x2 = (perpIntercept - parallelLineIntercept) / (parallelLineSlope - perpSlope)
+                y2 = (perpSlope * x2) + perpIntercept
+            else:
+                # If the perpendicular line is vertical
+                x2 = xs[1]
+                y2 = (parallelLineSlope * x2) + parallelLineIntercept
+
             self.lines[0].set_data(xs, ys)
             self.currSlope = self.getCurrSlope()
             self.currBaseLineXs = self.lines[0].get_xdata()
@@ -190,10 +192,21 @@ class Rectangle():
             qx2 = math.cos(rotationAngle)*(px2-xs[1])-math.sin(rotationAngle)*(py2-ys[1])+xs[1] 
             qy2 = math.sin(rotationAngle)*(px2-xs[1])+math.cos(rotationAngle)*(py2-ys[1])+ys[1]
 
-            topLineIntercept = qy2 - (baseLineSlope * qx2)
             perpIntercept = ys[0] - (perpSlope * xs[0])
-            x2 = (perpIntercept - topLineIntercept) / (baseLineSlope - perpSlope)
-            y2 = (x2 * baseLineSlope) + topLineIntercept
+            # Calculate intersection of perpline and topline
+            parallelLineSlope = math.tan(baseLineSlope)
+
+            parallelLineIntercept = qy2 - (parallelLineSlope * qx2)
+
+            # Calculate the intersection of the perpendicular line and the parallel line
+            if perpSlope != math.inf:
+                x2 = (perpIntercept - parallelLineIntercept) / (parallelLineSlope - perpSlope)
+                y2 = (perpSlope * x2) + perpIntercept
+            else:
+                # If the perpendicular line is vertical
+                x2 = xs[1]
+                y2 = (parallelLineSlope * x2) + parallelLineIntercept
+
             self.lines[0].set_data(xs, ys)
             self.currSlope = self.getCurrSlope()
             self.currBaseLineXs = self.lines[0].get_xdata()
@@ -203,7 +216,6 @@ class Rectangle():
             self.lines[2].set_data([qx2, x2], [qy2,y2])
             self.lines[3].set_data([xs[0], x2], [ys[0],y2])
             self.points = self.setPointsFromLines()
-
 
 class LineBuilder():
 
