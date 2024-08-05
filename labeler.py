@@ -1,6 +1,7 @@
 from PIL import Image
 import os
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 import atexit
 import signal
@@ -13,12 +14,16 @@ from datetime import datetime
 import shutil
 from tkinter import Tk
 from tkinter.filedialog import askdirectory
+from shapely.geometry import Polygon
+
 TK_SILENCE_DEPRECATION=1
 root = Tk()
+
 root.withdraw()
 imagePath = askdirectory(title='Select Folder') # shows dialog box and return the path
 print(imagePath)  
-labelPath = str(imagePath) + "Labels/"
+labelPath = str(imagePath[:-6]) + "Labels/"
+print(labelPath)
 Path(labelPath).mkdir(parents=True, exist_ok=True)
 now = datetime.now()
 date_time = now.strftime("%m_%d_%y_%H_%M_%S")
@@ -301,7 +306,7 @@ class LineBuilder():
         self.ind, self.idx = self.getInd(x,y)
         if self.idx is None:
             return
-        #print("attemping to remove line: ", self.idx)
+        print("attemping to remove line: ", self.idx)
         currDelLine = self.lines[self.idx]
         currDelLine.remove()
         self.xs.pop(self.idx)
@@ -311,6 +316,90 @@ class LineBuilder():
             del self.rectDict[currDelLine]
         self.perpLine = None
         self.lines.pop(self.idx)
+        self.canvas.draw()
+
+    def calculate_intersection_area(self, rect1, rect2):
+        poly1 = Polygon(rect1.points)
+        poly2 = Polygon(rect2.points)
+        if not poly1.intersects(poly2):
+            return 0
+        intersection = poly1.intersection(poly2)
+        return intersection.area
+    
+    def remove_rectangles_outside_boundaries(self, image_shape):
+        img_height, img_width = image_shape[:2]
+        to_delete = []
+
+        for rect in self.rectDict.values():
+            for point in rect.points:
+                if point[0] < 0 or point[0] > img_width or point[1] < 0 or point[1] > img_height:
+                    to_delete.append(rect)
+                    break
+
+        for rect in to_delete:
+            for line in rect.lines:
+                if line in self.lines:
+                    line.remove()
+                    self.lines.remove(line)
+            del self.rectDict[rect.lines[0]]
+
+        self.canvas.draw()
+
+    def remove_rectangles_outside_boundaries(self):
+        # Automatically get the current image shape
+        img = np.asarray(Image.open(imagePath + '/' + files[current_image_index]))
+        img_height, img_width = img.shape[:2]
+        to_delete_indices = []
+
+        # Collect indices of rectangles to delete
+        for idx, rect in enumerate(self.rectDict.values()):
+            for point in rect.points:
+                if point[0] < 0 or point[0] > img_width or point[1] < 0 or point[1] > img_height:
+                    to_delete_indices.append(idx)
+                    break
+
+        # Remove rectangles by index
+        for idx in sorted(to_delete_indices, reverse=True):
+            print("Attempting to remove line at index: ", idx)
+            currDelLine = self.lines[idx]
+            currDelLine.remove()
+            self.xs.pop(idx)
+            self.ys.pop(idx)
+            if currDelLine in self.rectDict:
+                self.rectDict[currDelLine].clearRectange()
+                del self.rectDict[currDelLine]
+            self.lines.pop(idx)
+        
+        self.canvas.draw()
+
+    def check_and_delete_overlapping_rectangles(self):
+        rectangles = list(self.rectDict.values())
+        to_delete = set()
+        for i, rect1 in enumerate(rectangles):
+            for j, rect2 in enumerate(rectangles):
+                if i >= j:
+                    continue
+                intersection_area = self.calculate_intersection_area(rect1, rect2)
+                rect1_area = Polygon(rect1.points).area
+                rect2_area = Polygon(rect2.points).area
+
+                if intersection_area >= 0.5 * rect1_area or intersection_area >= 0.5 * rect2_area:
+                    print(f"Deleting rectangle {j} due to overlap with rectangle {i}")
+                    to_delete.add(j)
+
+        for idx in sorted(to_delete, reverse=True):
+            print("attemping to remove line: ", idx)
+            currDelLine = self.lines[idx]
+            currDelLine.remove()
+            self.xs.pop(idx)
+            self.ys.pop(idx)
+            if currDelLine in self.rectDict:
+                self.rectDict[currDelLine].clearRectange()
+                del self.rectDict[currDelLine]
+            self.perpLine = None
+            self.lines.pop(idx)
+            self.canvas.draw()
+
         self.canvas.draw()
 
     def deleteLines(self):
@@ -578,7 +667,8 @@ def onKeyPress(event):
 
         linebuilder = lineBuilders[current_image_index]
         linebuilder.loadRectangles()
-
+        linebuilder.check_and_delete_overlapping_rectangles()
+        linebuilder.remove_rectangles_outside_boundaries()
         imgplot.set_data(img)
         plt.draw()
     if event.key == 'right':
@@ -597,7 +687,8 @@ def onKeyPress(event):
         linebuilder = lineBuilders[current_image_index]
         linebuilder.printLineCount()
         linebuilder.loadRectangles()
-
+        linebuilder.check_and_delete_overlapping_rectangles()
+        linebuilder.remove_rectangles_outside_boundaries()
         imgplot.set_data(img)
         plt.draw()
     if event.key == 'a':
@@ -608,9 +699,14 @@ def onKeyPress(event):
         y = [p[1] for p in xy]
         linebuilder.addLine(x,y)
     elif event.key == 'x':
+        print("got here")
         xy = plt.ginput(1)
+        print("got here 2")
+
         x = [p[0] for p in xy]
         y = [p[1] for p in xy]
+        print("got here 3")
+
         linebuilder.deleteLine(x,y)
     else:
         print(f"Invalid key: {event.key}")
