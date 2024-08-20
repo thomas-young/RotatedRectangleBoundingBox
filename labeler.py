@@ -22,7 +22,8 @@ root = Tk()
 root.withdraw()
 imagePath = askdirectory(title='Select Folder') # shows dialog box and return the path
 print(imagePath)  
-labelPath = str(imagePath[:-6]) + "Labels/"
+labelPath = str(imagePath) + "Labels/"
+print("label path: ")
 print(labelPath)
 Path(labelPath).mkdir(parents=True, exist_ok=True)
 now = datetime.now()
